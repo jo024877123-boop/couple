@@ -134,6 +134,11 @@ const App = () => {
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
   const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
+  // Apply Theme Effect
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', settings.theme);
+  }, [settings.theme]);
+
   // PWA Install Prompt
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   useEffect(() => {
