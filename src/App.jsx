@@ -244,17 +244,25 @@ const App = () => {
 
   // Login Check
   if (!currentUser) return <LoginView />;
-  if (!userData?.coupleId) return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-      <div className="animate-spin text-4xl">⏳</div>
-      <p className="text-gray-500 text-sm">데이터를 불러오고 있습니다...</p>
-      <button onClick={() => {
-        if (confirm('로그아웃 하시겠습니까?')) logout();
-      }} className="mt-4 px-6 py-2 bg-white border border-gray-300 rounded-full text-sm text-gray-600 shadow-sm hover:bg-gray-50 transition-all">
-        로그아웃 및 재시도
-      </button>
-    </div>
-  );
+  if (!userData?.coupleId) {
+    console.log('⏳ [App] Waiting for coupleId. userData:', userData, 'currentUser:', currentUser);
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6">
+        <div className="animate-spin text-4xl">⏳</div>
+        <p className="text-gray-500 text-sm">데이터를 불러오고 있습니다...</p>
+        <div className="text-xs text-gray-400 bg-gray-50 p-3 rounded-lg">
+          <p className="font-mono">currentUser: {currentUser ? '✓' : '✗'}</p>
+          <p className="font-mono">userData: {userData ? '✓' : '✗'}</p>
+          <p className="font-mono">coupleId: {userData?.coupleId || '없음'}</p>
+        </div>
+        <button onClick={() => {
+          if (confirm('로그아웃 하시겠습니까?')) logout();
+        }} className="mt-4 px-6 py-2 bg-white border border-gray-300 rounded-full text-sm text-gray-600 shadow-sm hover:bg-gray-50 transition-all">
+          로그아웃 및 재시도
+        </button>
+      </div>
+    );
+  }
 
   // Onboarding Check
   if (!isAdmin && !userData?.onboardingCompleted) {

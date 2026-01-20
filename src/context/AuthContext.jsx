@@ -361,17 +361,27 @@ export function AuthProvider({ children }) {
                     unsubscribeUserDoc = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
                         clearTimeout(timeoutId);
                         loadingRef.current = false;
+
+                        console.log('🔍 [AuthContext] onSnapshot callback:', {
+                            exists: docSnap.exists(),
+                            data: docSnap.data(),
+                            uid: user.uid
+                        });
+
                         if (docSnap.exists()) {
-                            setUserData({ ...docSnap.data(), uid: user.uid });
+                            const userData = { ...docSnap.data(), uid: user.uid };
+                            setUserData(userData);
                             setStatusMessage('연결 성공');
+                            console.log('✅ [AuthContext] setUserData called:', userData);
                         } else {
                             setStatusMessage('사용자 정보를 찾을 수 없습니다.');
+                            console.warn('⚠️ [AuthContext] Document does not exist for uid:', user.uid);
                         }
                         setLoading(false);
                     }, (error) => {
                         clearTimeout(timeoutId);
                         loadingRef.current = false;
-                        console.error("Auth Error:", error);
+                        console.error("❌ [AuthContext] Snapshot error:", error);
                         setStatusMessage('접근 권한 혹은 데이터 오류');
                         setLoading(false);
                     });
