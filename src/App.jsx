@@ -285,8 +285,21 @@ const App = () => {
 
   const handleAddPost = async (e) => {
     e.preventDefault();
-    // Allow post if it has content OR media
-    if (!newPost.content.trim() && newPost.media.length === 0) return;
+
+    // 1. Check Connection
+    if (!isConnected) {
+      alert("⚠️ 커플 연결이 되어있지 않습니다.\n설정에서 파트너와 연결 후 작성해주세요.");
+      return;
+    }
+
+    // 2. Check Content
+    if (!newPost.content.trim() && newPost.media.length === 0) {
+      alert("내용이나 사진을 입력해주세요.");
+      return;
+    }
+
+    // 3. Confirm Save
+    if (!confirm("소중한 추억을 저장하시겠습니까?")) return;
 
     try {
       // Media Upload Logic
@@ -320,6 +333,7 @@ const App = () => {
       };
 
       await addPost(userData.coupleId, post);
+      alert("저장되었습니다! 💕");
       resetForm();
       setIsModalOpen(false);
     } catch (err) {
