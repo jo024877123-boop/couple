@@ -104,43 +104,57 @@ export function AuthProvider({ children }) {
 
     // ========== GOOGLE LOGIN ==========
     async function loginWithGoogle() {
-        const provider = new GoogleAuthProvider();
-        const res = await signInWithPopup(auth, provider);
-        const user = res.user;
+        try {
+            console.log('🔐 [loginWithGoogle] Starting Google login...');
+            const provider = new GoogleAuthProvider();
+            const res = await signInWithPopup(auth, provider);
+            const user = res.user;
+            console.log('✅ [loginWithGoogle] signInWithPopup success. User:', user.uid);
 
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
+            const userRef = doc(db, 'users', user.uid);
+            const userSnap = await getDoc(userRef);
+            console.log('📄 [loginWithGoogle] User document exists:', userSnap.exists());
 
-        if (!userSnap.exists()) {
-            // New user - create couple and user doc
-            // Invite Code is NULL initially
-            const coupleRef = doc(collection(db, 'couples'));
-            await setDoc(coupleRef, {
-                inviteCode: null, // Changed from auto-generation
-                user1: user.uid,
-                user2: null,
-                coupleName: '우리',
-                anniversaryDate: new Date().toISOString().split('T')[0],
-                theme: 'simple',
-                appTitle: 'Our Story',
-                appSubtitle: '우리의 이야기',
-                createdAt: serverTimestamp()
-            });
+            if (!userSnap.exists()) {
+                console.log('🆕 [loginWithGoogle] New user detected. Creating couple and user docs...');
+                // New user - create couple and user doc
+                const coupleRef = doc(collection(db, 'couples'));
+                await setDoc(coupleRef, {
+                    inviteCode: null,
+                    user1: user.uid,
+                    user2: null,
+                    coupleName: '우리',
+                    anniversaryDate: new Date().toISOString().split('T')[0],
+                    theme: 'simple',
+                    appTitle: 'Our Story',
+                    appSubtitle: '우리의 이야기',
+                    createdAt: serverTimestamp()
+                });
+                console.log('✅ [loginWithGoogle] Couple document created:', coupleRef.id);
 
-            const newUserData = {
-                email: user.email,
-                name: user.displayName || '사용자',
-                coupleId: coupleRef.id,
-                emailVerified: true,
-                createdAt: serverTimestamp()
-            };
-            await setDoc(userRef, newUserData);
-            setUserData({ ...newUserData, uid: user.uid });
-        } else {
-            setUserData({ ...userSnap.data(), uid: user.uid });
+                const newUserData = {
+                    email: user.email,
+                    name: user.displayName || '사용자',
+                    coupleId: coupleRef.id,
+                    emailVerified: true,
+                    createdAt: serverTimestamp()
+                };
+                await setDoc(userRef, newUserData);
+                console.log('✅ [loginWithGoogle] User document created. Calling setUserData...');
+                setUserData({ ...newUserData, uid: user.uid });
+                console.log('✅ [loginWithGoogle] setUserData called with:', { ...newUserData, uid: user.uid });
+            } else {
+                const existingData = userSnap.data();
+                console.log('👤 [loginWithGoogle] Existing user. Data:', existingData);
+                setUserData({ ...existingData, uid: user.uid });
+                console.log('✅ [loginWithGoogle] setUserData called with:', { ...existingData, uid: user.uid });
+            }
+
+            return res;
+        } catch (error) {
+            console.error('❌ [loginWithGoogle] Error:', error);
+            throw error;
         }
-
-        return res;
     }
 
     // ========== COUPLE CONNECTION ==========
