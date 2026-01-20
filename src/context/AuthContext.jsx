@@ -112,7 +112,7 @@ export function AuthProvider({ children }) {
             console.log('✅ [loginWithGoogle] signInWithPopup success. User:', user.uid);
 
             const userRef = doc(db, 'users', user.uid);
-            const userSnap = await getDoc(userRef);
+            let userSnap = await getDoc(userRef);
             console.log('📄 [loginWithGoogle] User document exists:', userSnap.exists());
 
             if (!userSnap.exists()) {
@@ -137,12 +137,24 @@ export function AuthProvider({ children }) {
                     name: user.displayName || '사용자',
                     coupleId: coupleRef.id,
                     emailVerified: true,
+                    onboardingCompleted: false,
                     createdAt: serverTimestamp()
                 };
                 await setDoc(userRef, newUserData);
-                console.log('✅ [loginWithGoogle] User document created. Calling setUserData...');
-                setUserData({ ...newUserData, uid: user.uid });
-                console.log('✅ [loginWithGoogle] setUserData called with:', { ...newUserData, uid: user.uid });
+                console.log('✅ [loginWithGoogle] User document created.');
+
+                // Wait a bit and re-fetch to ensure it's readable
+                await new Promise(resolve => setTimeout(resolve, 500));
+                userSnap = await getDoc(userRef);
+
+                if (userSnap.exists()) {
+                    const finalData = { ...userSnap.data(), uid: user.uid };
+                    console.log('✅ [loginWithGoogle] Document verified. Calling setUserData with:', finalData);
+                    setUserData(finalData);
+                } else {
+                    console.warn('⚠️ [loginWithGoogle] Document still not readable after creation. Setting manually...');
+                    setUserData({ ...newUserData, uid: user.uid });
+                }
             } else {
                 const existingData = userSnap.data();
                 console.log('👤 [loginWithGoogle] Existing user. Data:', existingData);
@@ -150,6 +162,7 @@ export function AuthProvider({ children }) {
                 console.log('✅ [loginWithGoogle] setUserData called with:', { ...existingData, uid: user.uid });
             }
 
+            console.log('🎉 [loginWithGoogle] Login flow completed successfully');
             return res;
         } catch (error) {
             console.error('❌ [loginWithGoogle] Error:', error);
