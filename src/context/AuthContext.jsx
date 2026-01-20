@@ -69,10 +69,10 @@ export function AuthProvider({ children }) {
             // First login after email verification
             if (!data.coupleId) {
                 // Create new couple for this user
-                const inviteCode = Math.floor(100000 + Math.random() * 900000).toString();
+                // Invite Code is NULL initially. User must generate it manually.
                 const coupleRef = doc(collection(db, 'couples'));
                 await setDoc(coupleRef, {
-                    inviteCode,
+                    inviteCode: null, // Changed from auto-generation
                     user1: user.uid,
                     user2: null,
                     coupleName: '우리',
@@ -113,10 +113,10 @@ export function AuthProvider({ children }) {
 
         if (!userSnap.exists()) {
             // New user - create couple and user doc
-            const inviteCode = Math.floor(100000 + Math.random() * 900000).toString();
+            // Invite Code is NULL initially
             const coupleRef = doc(collection(db, 'couples'));
             await setDoc(coupleRef, {
-                inviteCode,
+                inviteCode: null, // Changed from auto-generation
                 user1: user.uid,
                 user2: null,
                 coupleName: '우리',
@@ -209,10 +209,10 @@ export function AuthProvider({ children }) {
         const partnerId = isUser1 ? coupleData.user2 : coupleData.user1;
 
         // Create new couple for me
-        const inviteCode = Math.floor(100000 + Math.random() * 900000).toString();
+        // Invite Code is NULL initially
         const newCoupleRef = doc(collection(db, 'couples'));
         await setDoc(newCoupleRef, {
-            inviteCode,
+            inviteCode: null,
             user1: currentUser.uid,
             user2: null,
             coupleName: '우리',
@@ -232,7 +232,7 @@ export function AuthProvider({ children }) {
         if (partnerId) {
             await updateDoc(coupleRef, {
                 [isUser1 ? 'user1' : 'user2']: null,
-                inviteCode: Math.floor(100000 + Math.random() * 900000).toString() // New code for them
+                inviteCode: null // Reset invite code for partner too
             });
         } else {
             // No partner, delete old couple and its data
@@ -242,15 +242,18 @@ export function AuthProvider({ children }) {
         setUserData({ ...userData, coupleId: newCoupleRef.id });
     }
 
-    // ========== REGENERATE INVITE CODE ==========
-    async function regenerateInviteCode() {
+    // ========== GENERATE INVITE CODE ==========
+    async function generateInviteCode() {
         if (!userData?.coupleId) return;
         const newCode = Math.floor(100000 + Math.random() * 900000).toString();
         // Check duplicate (optional but good practice) - skipped for simplicity assuming collision low
         await updateDoc(doc(db, 'couples', userData.coupleId), {
             inviteCode: newCode
         });
-        // Reload settings by forcing app refresh or context update
+        // Update local state to reflect change immediately without reload
+        // But since we use real-time listeners in some parts, verify if settings are real-time.
+        // Settings are NOT real-time in App.jsx (getCoupleSettings is one-time).
+        // So we should trigger a reload or update state manually.
         window.location.reload();
     }
 
@@ -322,7 +325,7 @@ export function AuthProvider({ children }) {
         loginWithGoogle,
         resetPassword,
         connectWithCode,
-        regenerateInviteCode,
+        generateInviteCode,
         disconnectCouple,
         logout,
         isAdmin,

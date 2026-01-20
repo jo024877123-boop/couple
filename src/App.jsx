@@ -19,7 +19,7 @@ import { useDrag } from '@use-gesture/react';
 import { useAuth } from './context/AuthContext'; // Auth Hook
 import {
   getCoupleSettings, updateCoupleSettings,
-  subscribePosts, addPost, updatePost, deletePost,
+  subscribePosts, addPost, updatePost, deletePost, uploadMedia,
   subscribeChecklist, addChecklistItem, updateChecklistItem, deleteChecklistItem,
   subscribeBucketList, addBucketItem, updateBucketItem, deleteBucketItem,
   subscribeChecklistGroups, addChecklistGroup, deleteChecklistGroup,
@@ -284,37 +284,47 @@ const App = () => {
 
   const handleAddPost = async (e) => {
     e.preventDefault();
-    if (!newPost.content.trim()) return;
+    // Allow post if it has content OR media
+    if (!newPost.content.trim() && newPost.media.length === 0) return;
 
-    // Media Upload Logic (Simple loop for now, ideally parallel)
-    const processedMedia = [];
-    if (newPost.media.length > 0) {
-      // Assume media contains dataURL or file objects. If dataURL, we need to convert or upload directly.
-      // For simplicity, we assume LoginView handles real file uploading, but here PostForm gives us dataURLs.
-      // We need to upload these dataURLs to Storage.
-      // BUT: PostForm implementation (Lines 1251+) reads files as DataURL.
-      // We should change PostForm to keep File objects or handle upload there.
-      // For now, let's just save the DataURL to Firestore (Limit 1MB). **Warning**: Firestore has limit.
-      // Better: Modify PostForm to return Files, and upload here.
-      // Let's assume for this step we just save what we have, but recommend Storage upload.
+    try {
+      // Media Upload Logic
+      const processedMedia = [];
+      if (newPost.media.length > 0) {
+        // Uploading indicator could be added here
+        for (const m of newPost.media) {
+          if (m.file) {
+            // Upload File object
+            const result = await uploadMedia(m.file, `couples/${userData.coupleId}/posts`);
+            processedMedia.push(result);
+          } else if (m.url && m.url.startsWith('data:')) {
+            // Convert Base64 to Blob and Upload
+            const res = await fetch(m.url);
+            const blob = await res.blob();
+            const file = new File([blob], m.name || `file_${Date.now()}`, { type: m.type === 'video' ? 'video/mp4' : 'image/jpeg' });
+            const result = await uploadMedia(file, `couples/${userData.coupleId}/posts`);
+            processedMedia.push(result);
+          } else {
+            // Assume it's already a URL
+            processedMedia.push(m);
+          }
+        }
+      }
 
-      // Actual Implementation: Just pass what we have. 
-      // Real app should upload to Storage using uploadMedia() service.
-      processedMedia.push(...newPost.media);
-    } else {
-      processedMedia.push({ url: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=800', type: 'image' });
+      const post = {
+        ...newPost,
+        media: processedMedia,
+        author: currentUser.uid,
+        date: newPost.date,
+      };
+
+      await addPost(userData.coupleId, post);
+      resetForm();
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert('게시글을 업로드하는 중 오류가 발생했습니다.\n' + err.message);
     }
-
-    const post = {
-      ...newPost,
-      media: processedMedia,
-      author: currentUser.uid, // Save UID as author
-      date: newPost.date,
-    };
-
-    await addPost(userData.coupleId, post);
-    resetForm();
-    setIsModalOpen(false);
   };
 
   const handleEditPost = async (e) => {
@@ -1437,7 +1447,7 @@ const PostForm = ({ post, setPost, onSubmit, submitLabel }) => {
         reader.onload = (e) => {
           setPost(prev => ({
             ...prev,
-            media: [...prev.media, { url: e.target.result, type: 'video', name: file.name }]
+            media: [...prev.media, { url: e.target.result, type: 'video', name: file.name, file: file }]
           }));
         };
         reader.readAsDataURL(file);

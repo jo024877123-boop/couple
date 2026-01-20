@@ -85,7 +85,13 @@ const LoginView = () => {
             await loginWithGoogle();
         } catch (err) {
             console.error(err);
-            setError('Google 로그인 실패: ' + err.message);
+            let msg = 'Google 로그인 실패: ' + err.message;
+            if (err.message.includes('popup-closed-by-user')) msg = '로그인 창이 닫혔습니다. 다시 시도해주세요.';
+            if (err.message.includes('popup-blocked')) msg = '팝업이 차단되었습니다. 브라우저 설정을 확인해주세요.';
+            setError(msg);
+            if (navigator.userAgent.includes('KAKAOTALK') || navigator.userAgent.includes('Instagram')) {
+                alert('카카오톡/인스타그램 인앱 브라우저에서는 Google 로그인이 제한될 수 있습니다. Chrome이나 Safari 등 기본 브라우저를 이용해주세요.');
+            }
         } finally {
             setLoading(false);
         }
