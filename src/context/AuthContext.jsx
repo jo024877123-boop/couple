@@ -45,12 +45,16 @@ export function AuthProvider({ children }) {
         });
 
         // Save User Data with Couple ID
-        await setDoc(doc(db, 'users', user.uid), {
+        const userDocData = {
             email,
             name,
             coupleId: coupleRef.id,
             createdAt: serverTimestamp()
-        });
+        };
+        await setDoc(doc(db, 'users', user.uid), userDocData);
+
+        // Immediately update state (no refresh needed)
+        setUserData({ ...userDocData, uid: user.uid });
 
         return user;
     }
@@ -104,8 +108,14 @@ export function AuthProvider({ children }) {
 
 
 
-    function login(email, password) {
-        return signInWithEmailAndPassword(auth, email, password);
+    async function login(email, password) {
+        const res = await signInWithEmailAndPassword(auth, email, password);
+        // Fetch and set user data immediately
+        const docSnap = await getDoc(doc(db, 'users', res.user.uid));
+        if (docSnap.exists()) {
+            setUserData({ ...docSnap.data(), uid: res.user.uid });
+        }
+        return res;
     }
 
     function logout() {
