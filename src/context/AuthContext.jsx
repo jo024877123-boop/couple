@@ -258,8 +258,7 @@ export function AuthProvider({ children }) {
         // Update local state to reflect change immediately without reload
         // But since we use real-time listeners in some parts, verify if settings are real-time.
         // Settings are NOT real-time in App.jsx (getCoupleSettings is one-time).
-        // So we should trigger a reload or update state manually.
-        window.location.reload();
+        return newCode;
     }
 
     // ========== FORCE START NEW COUPLE ==========
@@ -284,8 +283,11 @@ export function AuthProvider({ children }) {
             coupleId: coupleRef.id
         });
 
-        // Reload to apply changes
-        window.location.reload();
+        // Update local state to immediately trigger App re-render
+        setUserData({
+            ...userData,
+            coupleId: coupleRef.id
+        });
     }
 
     // ========== DELETE COUPLE DATA ==========
@@ -367,7 +369,11 @@ export function AuthProvider({ children }) {
 
     return (
         <AuthContext.Provider value={value}>
-            {!loading && children}
+            {loading ? (
+                <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>
+                    ❤️
+                </div>
+            ) : children}
         </AuthContext.Provider>
     );
 }

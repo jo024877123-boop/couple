@@ -244,7 +244,15 @@ const App = () => {
 
   // Login Check
   if (!currentUser) return <LoginView />;
-  if (!userData?.coupleId) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin text-4xl">⏳</div></div>;
+  if (!userData?.coupleId) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <div className="animate-spin text-4xl">⏳</div>
+      <p className="text-gray-500 text-sm">데이터를 불러오고 있습니다...</p>
+      <button onClick={logout} className="text-xs text-gray-400 underline hover:text-red-500">
+        반응이 없나요? 로그아웃
+      </button>
+    </div>
+  );
 
   // Onboarding Check
   if (!isAdmin && !userData?.onboardingCompleted) {
@@ -1124,7 +1132,8 @@ const App = () => {
                             type="button"
                             onClick={async () => {
                               if (confirm('초대 코드를 새로 발급하시겠습니까?\n이전 코드는 사용할 수 없게 됩니다.')) {
-                                await generateInviteCode();
+                                const newCode = await generateInviteCode();
+                                if (newCode) setSettings(prev => ({ ...prev, inviteCode: newCode }));
                               }
                             }}
                             className="p-1.5 text-gray-400 hover:text-theme-500 hover:bg-theme-50 rounded-full transition-colors"
@@ -1138,7 +1147,10 @@ const App = () => {
                       <div className="mb-4">
                         <button
                           type="button"
-                          onClick={generateInviteCode}
+                          onClick={async () => {
+                            const newCode = await generateInviteCode();
+                            if (newCode) setSettings(prev => ({ ...prev, inviteCode: newCode }));
+                          }}
                           className="w-full py-3 rounded-xl border-2 border-dashed border-theme-300 text-theme-600 font-bold hover:bg-theme-50 transition-all flex items-center justify-center gap-2"
                         >
                           <Icon name="plus" size={16} /> 초대 코드 발급받기
