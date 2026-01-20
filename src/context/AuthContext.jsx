@@ -10,7 +10,7 @@ import {
     sendEmailVerification,
     sendPasswordResetEmail
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, serverTimestamp, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -369,7 +369,7 @@ export function AuthProvider({ children }) {
                 setLoading(false);
                 setStatusMessage("연결 시간이 너무 오래 걸립니다.");
             }
-        }, 10000);
+        }, 30000);
 
         setStatusMessage('인증 상태 확인 중...');
         const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
