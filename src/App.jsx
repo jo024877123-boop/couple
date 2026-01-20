@@ -242,6 +242,21 @@ const App = () => {
     };
   }, [userData?.coupleId]);
 
+  // Scroll effect - must be before conditional returns
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // dDay calculation - must be before conditional returns
+  const dDay = useMemo(() => {
+    const diff = Math.abs(new Date() - new Date(settings.anniversaryDate));
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }, [settings.anniversaryDate]);
+
+  const isConnected = !!(settings.user1 && settings.user2) || coupleUsers.length >= 2;
+
   // Login Check
   if (!currentUser) return <LoginView />;
   if (!userData?.coupleId) {
@@ -287,18 +302,6 @@ const App = () => {
     </div>
   ) : null;
 
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const dDay = useMemo(() => {
-    const diff = Math.abs(new Date() - new Date(settings.anniversaryDate));
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  }, [settings.anniversaryDate]);
-
-  const isConnected = !!(settings.user1 && settings.user2) || coupleUsers.length >= 2;
 
   const handleAddPost = async (e) => {
     e.preventDefault();
