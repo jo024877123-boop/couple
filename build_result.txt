@@ -1,0 +1,55 @@
+ERROR: Command failed: npm run build
+[31mx[39m Build failed in 9ms
+[31merror during build:
+[31m[vite-plugin-pwa:build] There was an error during the build:
+  [plugin vite:build-import-analysis] index.HTML (7:36): Failed to parse source for import analysis because the content contains invalid JS syntax. You may need to install appropriate plugins to handle the .HTML file format, or if it's an asset, add "**/*.HTML" to `assetsInclude` in your configuration.
+Additionally, handling the error in the 'buildEnd' hook caused the following error:
+  [plugin vite:build-import-analysis] index.HTML (7:36): Failed to parse source for import analysis because the content contains invalid JS syntax. You may need to install appropriate plugins to handle the .HTML file format, or if it's an asset, add "**/*.HTML" to `assetsInclude` in your configuration.[31m
+file: [36mC:/Users/a/Desktop/Antigravity/couple/index.HTML:7:36[31m
+[33m
+5:   <meta charset="UTF-8">
+6:   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+7:   <title>Our Story - 우리의 이야기</title>
+                                       ^
+8:   <meta name="description" content="커플의 행복한 순간을 기록하는 어플리케이션">
+9:   <link rel="preconnect" href="https://fonts.googleapis.com">
+[31m
+    at getRollupError (file:///C:/Users/a/Desktop/Antigravity/couple/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at file:///C:/Users/a/Desktop/Antigravity/couple/node_modules/rollup/dist/es/shared/node-entry.js:23463:39
+    at async catchUnfinishedHookActions (file:///C:/Users/a/Desktop/Antigravity/couple/node_modules/rollup/dist/es/shared/node-entry.js:22921:16)
+    at async rollupInternal (file:///C:/Users/a/Desktop/Antigravity/couple/node_modules/rollup/dist/es/shared/node-entry.js:23446:5)
+    at async build (file:///C:/Users/a/Desktop/Antigravity/couple/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65709:14)
+    at async CAC.<anonymous> (file:///C:/Users/a/Desktop/Antigravity/couple/node_modules/vite/dist/node/cli.js:829:5)[39m
+
+
+STDOUT:
+
+> couple-app@1.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+[32m✓[39m 0 modules transformed.
+
+
+STDERR:
+[31mx[39m Build failed in 9ms
+[31merror during build:
+[31m[vite-plugin-pwa:build] There was an error during the build:
+  [plugin vite:build-import-analysis] index.HTML (7:36): Failed to parse source for import analysis because the content contains invalid JS syntax. You may need to install appropriate plugins to handle the .HTML file format, or if it's an asset, add "**/*.HTML" to `assetsInclude` in your configuration.
+Additionally, handling the error in the 'buildEnd' hook caused the following error:
+  [plugin vite:build-import-analysis] index.HTML (7:36): Failed to parse source for import analysis because the content contains invalid JS syntax. You may need to install appropriate plugins to handle the .HTML file format, or if it's an asset, add "**/*.HTML" to `assetsInclude` in your configuration.[31m
+file: [36mC:/Users/a/Desktop/Antigravity/couple/index.HTML:7:36[31m
+[33m
+5:   <meta charset="UTF-8">
+6:   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+7:   <title>Our Story - 우리의 이야기</title>
+                                       ^
+8:   <meta name="description" content="커플의 행복한 순간을 기록하는 어플리케이션">
+9:   <link rel="preconnect" href="https://fonts.googleapis.com">
+[31m
+    at getRollupError (file:///C:/Users/a/Desktop/Antigravity/couple/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at file:///C:/Users/a/Desktop/Antigravity/couple/node_modules/rollup/dist/es/shared/node-entry.js:23463:39
+    at async catchUnfinishedHookActions (file:///C:/Users/a/Desktop/Antigravity/couple/node_modules/rollup/dist/es/shared/node-entry.js:22921:16)
+    at async rollupInternal (file:///C:/Users/a/Desktop/Antigravity/couple/node_modules/rollup/dist/es/shared/node-entry.js:23446:5)
+    at async build (file:///C:/Users/a/Desktop/Antigravity/couple/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65709:14)
+    at async CAC.<anonymous> (file:///C:/Users/a/Desktop/Antigravity/couple/node_modules/vite/dist/node/cli.js:829:5)[39m
