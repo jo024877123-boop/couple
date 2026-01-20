@@ -21,6 +21,14 @@ export const getCoupleUsers = async (coupleId) => {
     return querySnapshot.docs.map(doc => doc.data());
 };
 
+export const subscribeCoupleUsers = (coupleId, callback) => {
+    const q = query(collection(db, 'users'), where('coupleId', '==', coupleId));
+    return onSnapshot(q, (snapshot) => {
+        const users = snapshot.docs.map(doc => doc.data());
+        callback(users);
+    });
+};
+
 // Find couple by invite code
 export const findCoupleByInviteCode = async (inviteCode) => {
     const q = query(collection(db, 'couples'), where('inviteCode', '==', inviteCode));

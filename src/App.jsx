@@ -19,7 +19,7 @@ import { useDrag } from '@use-gesture/react';
 import { useAuth } from './context/AuthContext'; // Auth Hook
 import {
   getCoupleSettings, updateCoupleSettings,
-  subscribePosts, addPost, updatePost, deletePost, uploadMedia,
+  subscribePosts, addPost, updatePost, deletePost, uploadMedia, subscribeCoupleUsers,
   subscribeChecklist, addChecklistItem, updateChecklistItem, deleteChecklistItem,
   subscribeBucketList, addBucketItem, updateBucketItem, deleteBucketItem,
   subscribeChecklistGroups, addChecklistGroup, deleteChecklistGroup,
@@ -224,10 +224,8 @@ const App = () => {
     getCoupleSettings(userData.coupleId).then(data => {
       if (data) setSettings(prev => ({ ...prev, ...data }));
     });
-    // Fetch Users
-    getCoupleUsers(userData.coupleId).then(setCoupleUsers);
-
     // 2. Subscriptions
+    const unsubUsers = subscribeCoupleUsers(userData.coupleId, setCoupleUsers); // Real-time users update
     const unsubPosts = subscribePosts(userData.coupleId, setPosts);
     const unsubCheckGroups = subscribeChecklistGroups(userData.coupleId, (groups) => {
       setChecklistGroups(groups.length ? groups : [{ id: 'default', name: '기본 그룹' }]);
@@ -236,6 +234,7 @@ const App = () => {
     const unsubBucket = subscribeBucketList(userData.coupleId, setBucketList);
 
     return () => {
+      unsubUsers();
       unsubPosts();
       unsubCheckGroups();
       unsubChecklist();
