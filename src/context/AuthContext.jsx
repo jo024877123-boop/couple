@@ -357,7 +357,6 @@ export function AuthProvider({ children }) {
 
     // ========== AUTH STATE OBSERVER ==========
     useEffect(() => {
-        let unsubscribeUserDoc;
         let timeoutId;
 
         const loadingRef = { current: true };
@@ -375,22 +374,17 @@ export function AuthProvider({ children }) {
         const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
             setCurrentUser(user);
 
-            // Cleanup previous listener
-            if (unsubscribeUserDoc) {
-                unsubscribeUserDoc();
-                unsubscribeUserDoc = null;
-            }
-
             if (user) {
                 if (!isAdmin) {
                     setStatusMessage('커플 데이터 연결 중...');
-                    console.log('📡 [AuthContext] Subscribing to doc(db, "users", "' + user.uid + '")');
-                    // Real-time subscription
-                    unsubscribeUserDoc = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+                    console.log('📡 [AuthContext] Fetching doc(db, "users", "' + user.uid + '")');
+
+                    // Use getDoc for immediate fetch instead of onSnapshot subscription
+                    getDoc(doc(db, 'users', user.uid)).then((docSnap) => {
                         clearTimeout(timeoutId);
                         loadingRef.current = false;
 
-                        console.log('🔍 [AuthContext] onSnapshot callback:', {
+                        console.log('🔍 [AuthContext] getDoc result:', {
                             exists: docSnap.exists(),
                             data: docSnap.data(),
                             uid: user.uid
@@ -404,15 +398,13 @@ export function AuthProvider({ children }) {
                         } else {
                             setStatusMessage('사용자 정보를 찾을 수 없습니다.');
                             console.warn('⚠️ [AuthContext] Document does not exist for uid:', user.uid);
-                            alert('⚠️ Firestore에 사용자 문서가 없습니다!\nUID: ' + user.uid + '\n\nFirebase Console에서 이 UID로 문서를 찾아보세요.');
                         }
                         setLoading(false);
-                    }, (error) => {
+                    }).catch((error) => {
                         clearTimeout(timeoutId);
                         loadingRef.current = false;
-                        console.error("❌ [AuthContext] onSnapshot error:", error);
-                        alert('❌ [AuthContext] Firestore 접근 오류:\n' + error.code + '\n' + error.message);
-                        setStatusMessage('접근 권한 혹은 데이터 오류');
+                        console.error("❌ [AuthContext] getDoc error:", error);
+                        setStatusMessage('데이터 로드 오류: ' + error.message);
                         setLoading(false);
                     });
                 } else {
@@ -431,7 +423,6 @@ export function AuthProvider({ children }) {
 
         return () => {
             unsubscribeAuth();
-            if (unsubscribeUserDoc) unsubscribeUserDoc();
             clearTimeout(timeoutId);
         };
     }, [isAdmin]);
