@@ -89,7 +89,7 @@ const Logo = ({ size = 40, className = "" }) => (
 );
 
 const App = () => {
-  const { currentUser, userData, logout, connectPartner, isAdmin, setUserData } = useAuth(); // Auth and Admin
+  const { currentUser, userData, logout, connectWithCode, disconnectCouple, isAdmin, setUserData } = useAuth();
   const [adminViewTarget, setAdminViewTarget] = useState(null); // Couple ID to monitor
 
   // Settings State (Default values)
@@ -1060,22 +1060,54 @@ const App = () => {
               {/* Couple Connection Section */}
               <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
                 <h4 className="font-bold text-sm text-gray-500 mb-3 flex items-center gap-2"><Icon name="link" size={14} /> 커플 연동</h4>
-                <div className="flex items-center justify-between mb-4 bg-white p-3 rounded-xl border border-gray-200">
-                  <span className="text-secondary text-sm font-medium">내 초대 코드</span>
-                  <span className="font-black text-xl text-theme-600 tracking-widest">{settings.inviteCode || '...'}</span>
-                </div>
 
                 {coupleUsers.length < 2 ? (
-                  <div className="flex gap-2">
-                    <input type="text" placeholder="상대방 코드 6자리" id="partnerCodeInput" className="bg-white border-2 border-transparent focus:border-theme-300 rounded-xl px-3 py-3 text-sm flex-1 outline-none text-center font-bold tracking-widest" maxLength={6} />
-                    <button type="button" onClick={() => {
-                      const code = document.getElementById('partnerCodeInput').value;
-                      if (code) connectPartner(code).catch(e => alert(e.message));
-                    }} className="bg-theme-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-theme btn-bounce">연결</button>
-                  </div>
+                  <>
+                    {/* Show invite code only if not connected */}
+                    {settings.inviteCode && (
+                      <div className="flex items-center justify-between mb-4 bg-white p-3 rounded-xl border border-gray-200">
+                        <span className="text-secondary text-sm font-medium">내 초대 코드</span>
+                        <span className="font-black text-xl text-theme-600 tracking-widest">{settings.inviteCode}</span>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input type="text" placeholder="상대방 코드 6자리" id="partnerCodeInput" className="bg-white border-2 border-transparent focus:border-theme-300 rounded-xl px-3 py-3 text-sm flex-1 outline-none text-center font-bold tracking-widest" maxLength={6} />
+                      <button type="button" onClick={async () => {
+                        const code = document.getElementById('partnerCodeInput').value;
+                        if (code) {
+                          try {
+                            await connectWithCode(code);
+                            alert('연결되었습니다! 🎉');
+                            window.location.reload();
+                          } catch (e) {
+                            alert(e.message);
+                          }
+                        }
+                      }} className="bg-theme-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-theme btn-bounce">연결</button>
+                    </div>
+                  </>
                 ) : (
-                  <div className="text-center p-2 bg-green-50 text-green-600 rounded-xl font-bold text-sm">
-                    ❤️ {coupleUsers.find(u => u.uid !== currentUser?.uid)?.name || '파트너'}님과 연결되었습니다!
+                  <div className="space-y-3">
+                    <div className="text-center p-3 bg-green-50 text-green-600 rounded-xl font-bold text-sm">
+                      ❤️ {coupleUsers.find(u => u.uid !== currentUser?.uid)?.name || '파트너'}님과 연결되었습니다!
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (confirm('정말 연동을 해제하시겠습니까?\n공유된 데이터가 모두 삭제됩니다.')) {
+                          try {
+                            await disconnectCouple();
+                            alert('연동이 해제되었습니다.');
+                            window.location.reload();
+                          } catch (e) {
+                            alert('연동 해제 실패: ' + e.message);
+                          }
+                        }
+                      }}
+                      className="w-full py-2 rounded-xl border-2 border-red-200 text-red-500 font-bold text-sm hover:bg-red-50 transition-all"
+                    >
+                      연동 해제
+                    </button>
                   </div>
                 )}
               </div>

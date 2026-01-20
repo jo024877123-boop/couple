@@ -1,8 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../lib/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, collection, serverTimestamp } from 'firebase/firestore'; // DB Operations
-import { findCoupleByInviteCode } from '../services/db';
+import {
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged,
+    GoogleAuthProvider,
+    signInWithPopup,
+    sendEmailVerification
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -12,193 +19,272 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
-    const [loading, setLoading] = useState(true);
     const [userData, setUserData] = useState(null);
-    const [isAdmin, setIsAdmin] = useState(false); // Admin State
+    const [loading, setLoading] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(false);
 
-    // Helper to override current user (for admin monitoring)
-    const setAdminMode = (status) => {
-        setIsAdmin(status);
-        if (status) {
-            setCurrentUser({ uid: 'admin', email: 'admin@ourstory.com' });
-            setUserData({ name: '관리자', coupleId: null });
-        } else {
-            setCurrentUser(null);
-            setUserData(null);
-        }
-    };
+    // ========== SIGNUP ==========
     async function signup(email, password, name) {
+        // 1. Create Firebase Auth user
         const res = await createUserWithEmailAndPassword(auth, email, password);
         const user = res.user;
-        const inviteCode = Math.floor(100000 + Math.random() * 900000).toString(); // Generate 6-digit code
 
-        // Create new Couple Document
-        const coupleRef = doc(collection(db, 'couples'));
-        await setDoc(coupleRef, {
-            createdAt: serverTimestamp(),
-            coupleName: '우리',
-            inviteCode, // Save code
-            anniversaryDate: new Date().toISOString().split('T')[0],
-            theme: 'simple',
-            appTitle: 'Our Story',
-            appSubtitle: '우리의 이야기'
-        });
+        // 2. Send verification email
+        await sendEmailVerification(user);
 
-        // Save User Data with Couple ID
-        const userDocData = {
+        // 3. Create user document (not fully registered until email verified)
+        await setDoc(doc(db, 'users', user.uid), {
             email,
             name,
-            coupleId: coupleRef.id,
+            coupleId: null, // Will be set on first login after verification
+            emailVerified: false,
             createdAt: serverTimestamp()
-        };
-        await setDoc(doc(db, 'users', user.uid), userDocData);
+        });
 
-        // Immediately update state (no refresh needed)
-        setUserData({ ...userDocData, uid: user.uid });
+        // 4. Sign out - user must verify email and log in again
+        await signOut(auth);
 
-        return user;
+        return { message: '인증 메일을 발송했습니다. 이메일을 확인해주세요!' };
     }
 
-    // Google Login
+    // ========== LOGIN ==========
+    async function login(email, password) {
+        const res = await signInWithEmailAndPassword(auth, email, password);
+        const user = res.user;
+
+        // Check email verification
+        if (!user.emailVerified) {
+            await signOut(auth);
+            throw new Error('이메일 인증이 필요합니다. 메일함을 확인해주세요.');
+        }
+
+        // Get user document
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+
+            // First login after email verification
+            if (!data.coupleId) {
+                // Create new couple for this user
+                const inviteCode = Math.floor(100000 + Math.random() * 900000).toString();
+                const coupleRef = doc(collection(db, 'couples'));
+                await setDoc(coupleRef, {
+                    inviteCode,
+                    user1: user.uid,
+                    user2: null,
+                    coupleName: '우리',
+                    anniversaryDate: new Date().toISOString().split('T')[0],
+                    theme: 'simple',
+                    appTitle: 'Our Story',
+                    appSubtitle: '우리의 이야기',
+                    createdAt: serverTimestamp()
+                });
+
+                // Update user with coupleId
+                await updateDoc(userRef, {
+                    coupleId: coupleRef.id,
+                    emailVerified: true
+                });
+
+                setUserData({ ...data, coupleId: coupleRef.id, emailVerified: true, uid: user.uid });
+            } else {
+                // Mark as verified if not already
+                if (!data.emailVerified) {
+                    await updateDoc(userRef, { emailVerified: true });
+                }
+                setUserData({ ...data, emailVerified: true, uid: user.uid });
+            }
+        }
+
+        return res;
+    }
+
+    // ========== GOOGLE LOGIN ==========
     async function loginWithGoogle() {
         const provider = new GoogleAuthProvider();
         const res = await signInWithPopup(auth, provider);
         const user = res.user;
 
-        // Check if existing user
-        const docRef = doc(db, 'users', user.uid);
-        const docSnap = await getDoc(docRef);
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
 
-        if (!docSnap.exists()) {
-            // New User -> Create Couple
-            const inviteCode = Math.floor(100000 + Math.random() * 900000).toString();
-            const coupleRef = doc(collection(db, 'couples'));
-            await setDoc(coupleRef, {
-                createdAt: serverTimestamp(),
-                coupleName: '우리',
-                inviteCode,
-                anniversaryDate: new Date().toISOString().split('T')[0],
-                theme: 'simple',
-                appTitle: 'Our Story',
-                appSubtitle: '우리의 이야기'
-            });
-
-            await setDoc(docRef, {
-                email: user.email,
-                name: user.displayName || '이름 없음',
-                coupleId: coupleRef.id,
-                createdAt: serverTimestamp()
-            });
-        }
-    }
-
-    // Connect Partner (Merge Couple)
-    async function connectPartner(code) {
-        if (!currentUser) return;
-        const couple = await findCoupleByInviteCode(code);
-        if (!couple) throw new Error('유효하지 않은 초대 코드입니다.');
-
-        // Update my coupleId to target couple
-        const userRef = doc(db, 'users', currentUser.uid);
-        await updateDoc(userRef, { coupleId: couple.id });
-
-        // Reload to refresh context
-        window.location.reload();
-    }
-
-
-
-    async function login(email, password) {
-        const res = await signInWithEmailAndPassword(auth, email, password);
-        // Fetch and set user data immediately
-        const docSnap = await getDoc(doc(db, 'users', res.user.uid));
-        if (docSnap.exists()) {
-            setUserData({ ...docSnap.data(), uid: res.user.uid });
-        }
-        return res;
-    }
-
-    // Email Link (Passwordless) Authentication
-    async function sendEmailLink(email) {
-        const actionCodeSettings = {
-            url: window.location.origin + '/login', // Redirect URL after click
-            handleCodeInApp: true,
-        };
-        await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-        // Save email to localStorage for completing sign-in
-        window.localStorage.setItem('emailForSignIn', email);
-    }
-
-    async function completeEmailLinkSignIn(email, name) {
-        if (!isSignInWithEmailLink(auth, window.location.href)) {
-            throw new Error('유효하지 않은 로그인 링크입니다.');
-        }
-
-        const res = await signInWithEmailLink(auth, email, window.location.href);
-        const user = res.user;
-
-        // Check if user exists
-        const docRef = doc(db, 'users', user.uid);
-        const docSnap = await getDoc(docRef);
-
-        if (!docSnap.exists()) {
+        if (!userSnap.exists()) {
             // New user - create couple and user doc
             const inviteCode = Math.floor(100000 + Math.random() * 900000).toString();
             const coupleRef = doc(collection(db, 'couples'));
             await setDoc(coupleRef, {
-                createdAt: serverTimestamp(),
-                coupleName: '우리',
                 inviteCode,
+                user1: user.uid,
+                user2: null,
+                coupleName: '우리',
                 anniversaryDate: new Date().toISOString().split('T')[0],
                 theme: 'simple',
                 appTitle: 'Our Story',
-                appSubtitle: '우리의 이야기'
+                appSubtitle: '우리의 이야기',
+                createdAt: serverTimestamp()
             });
 
-            const userDocData = {
-                email,
-                name: name || '사용자',
+            const newUserData = {
+                email: user.email,
+                name: user.displayName || '사용자',
                 coupleId: coupleRef.id,
+                emailVerified: true,
                 createdAt: serverTimestamp()
             };
-            await setDoc(docRef, userDocData);
-            setUserData({ ...userDocData, uid: user.uid });
+            await setDoc(userRef, newUserData);
+            setUserData({ ...newUserData, uid: user.uid });
         } else {
-            setUserData({ ...docSnap.data(), uid: user.uid });
+            setUserData({ ...userSnap.data(), uid: user.uid });
         }
 
-        // Clear saved email
-        window.localStorage.removeItem('emailForSignIn');
         return res;
     }
 
+    // ========== COUPLE CONNECTION ==========
+    async function connectWithCode(inviteCode) {
+        if (!currentUser || !userData) throw new Error('로그인이 필요합니다.');
+
+        // Find couple with this invite code
+        const q = query(collection(db, 'couples'), where('inviteCode', '==', inviteCode));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            throw new Error('유효하지 않은 초대 코드입니다.');
+        }
+
+        const targetCouple = snapshot.docs[0];
+        const targetCoupleData = targetCouple.data();
+
+        if (targetCoupleData.user2) {
+            throw new Error('이미 다른 사람과 연결된 코드입니다.');
+        }
+
+        if (targetCoupleData.user1 === currentUser.uid) {
+            throw new Error('자신의 코드는 사용할 수 없습니다.');
+        }
+
+        // Delete my old couple data
+        if (userData.coupleId && userData.coupleId !== targetCouple.id) {
+            await deleteCouple(userData.coupleId);
+        }
+
+        // Connect to target couple
+        await updateDoc(doc(db, 'couples', targetCouple.id), {
+            user2: currentUser.uid,
+            inviteCode: null // Remove invite code after connection
+        });
+
+        // Update my user doc
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+            coupleId: targetCouple.id
+        });
+
+        setUserData({ ...userData, coupleId: targetCouple.id });
+    }
+
+    // ========== DISCONNECT ==========
+    async function disconnectCouple() {
+        if (!currentUser || !userData?.coupleId) return;
+
+        const coupleRef = doc(db, 'couples', userData.coupleId);
+        const coupleSnap = await getDoc(coupleRef);
+
+        if (!coupleSnap.exists()) return;
+
+        const coupleData = coupleSnap.data();
+        const isUser1 = coupleData.user1 === currentUser.uid;
+        const partnerId = isUser1 ? coupleData.user2 : coupleData.user1;
+
+        // Create new couple for me
+        const inviteCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const newCoupleRef = doc(collection(db, 'couples'));
+        await setDoc(newCoupleRef, {
+            inviteCode,
+            user1: currentUser.uid,
+            user2: null,
+            coupleName: '우리',
+            anniversaryDate: new Date().toISOString().split('T')[0],
+            theme: 'simple',
+            appTitle: 'Our Story',
+            appSubtitle: '우리의 이야기',
+            createdAt: serverTimestamp()
+        });
+
+        // Update my user doc
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+            coupleId: newCoupleRef.id
+        });
+
+        // If partner exists, give them the old couple (minus me)
+        if (partnerId) {
+            await updateDoc(coupleRef, {
+                [isUser1 ? 'user1' : 'user2']: null,
+                inviteCode: Math.floor(100000 + Math.random() * 900000).toString() // New code for them
+            });
+        } else {
+            // No partner, delete old couple and its data
+            await deleteCouple(userData.coupleId);
+        }
+
+        setUserData({ ...userData, coupleId: newCoupleRef.id });
+    }
+
+    // ========== DELETE COUPLE DATA ==========
+    async function deleteCouple(coupleId) {
+        // Delete subcollections (posts, checklist, bucketlist)
+        const subcollections = ['posts', 'checklist', 'bucketlist', 'checklist_groups'];
+        for (const sub of subcollections) {
+            const subRef = collection(db, `couples/${coupleId}/${sub}`);
+            const subDocs = await getDocs(subRef);
+            for (const d of subDocs.docs) {
+                await deleteDoc(d.ref);
+            }
+        }
+        // Delete couple doc
+        await deleteDoc(doc(db, 'couples', coupleId));
+    }
+
+    // ========== LOGOUT ==========
     function logout() {
         setUserData(null);
         setIsAdmin(false);
         return signOut(auth);
     }
 
+    // ========== ADMIN ==========
+    function setAdminMode(status) {
+        setIsAdmin(status);
+        if (status) {
+            setCurrentUser({ uid: 'admin', email: 'admin@ourstory.com' });
+            setUserData({ name: '관리자', coupleId: null, isAdmin: true });
+        }
+    }
+
+    // ========== AUTH STATE LISTENER ==========
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
-            if (user) {
-                // Only fetch from Firestore if userData is not already set (e.g., from signup/login)
+
+            if (user && !isAdmin) {
                 try {
-                    const docRef = doc(db, 'users', user.uid);
-                    const docSnap = await getDoc(docRef);
-                    if (docSnap.exists()) {
-                        setUserData({ ...docSnap.data(), uid: user.uid }); // Include uid!
+                    const userRef = doc(db, 'users', user.uid);
+                    const userSnap = await getDoc(userRef);
+                    if (userSnap.exists()) {
+                        setUserData({ ...userSnap.data(), uid: user.uid });
                     }
                 } catch (e) {
                     console.error("Error fetching user data:", e);
                 }
-            } else {
+            } else if (!user && !isAdmin) {
                 setUserData(null);
             }
+
             setLoading(false);
         });
         return unsubscribe;
-    }, []);
+    }, [isAdmin]);
 
     const value = {
         currentUser,
@@ -206,9 +292,8 @@ export function AuthProvider({ children }) {
         signup,
         login,
         loginWithGoogle,
-        sendEmailLink,
-        completeEmailLinkSignIn,
-        connectPartner,
+        connectWithCode,
+        disconnectCouple,
         logout,
         isAdmin,
         setAdminMode,
