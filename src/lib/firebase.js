@@ -1,9 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, browserSessionPersistence } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
-// Firebase Console에서 발급받은 키를 .env 파일에 입력해야 합니다.
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -15,8 +14,13 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-// Exports
+// Set Persistence to SESSION (Login required on every new tab/window)
+setPersistence(auth, browserSessionPersistence).catch((error) => {
+    console.error("Persistence setting failed:", error);
+});
+
 export const db = getFirestore(app);
-export const auth = getAuth(app);
+export { auth };
 export const storage = getStorage(app);

@@ -333,14 +333,16 @@ export function AuthProvider({ children }) {
         let unsubscribeUserDoc;
         let timeoutId;
 
-        // Failsafe: If loading takes too long (e.g. 10s), force stop loading
+        const loadingRef = { current: true };
+
+        // Timeout failsafe (10 seconds)
         timeoutId = setTimeout(() => {
-            if (loading) {
-                console.error("Auth timeout");
+            if (loadingRef.current) {
+                console.error("Auth timeout - forcing loading to false");
                 setLoading(false);
-                setStatusMessage("응답 시간이 초과되었습니다.");
+                setStatusMessage("연결 시간이 너무 오래 걸립니다.");
             }
-        }, 15000);
+        }, 10000);
 
         setStatusMessage('인증 상태 확인 중...');
         const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -354,34 +356,36 @@ export function AuthProvider({ children }) {
 
             if (user) {
                 if (!isAdmin) {
-                    setStatusMessage('사용자 정보 불러오는 중...');
+                    setStatusMessage('커플 데이터 연결 중...');
                     // Real-time subscription
                     unsubscribeUserDoc = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
-                        clearTimeout(timeoutId); // Success
+                        clearTimeout(timeoutId);
+                        loadingRef.current = false;
                         if (docSnap.exists()) {
                             setUserData({ ...docSnap.data(), uid: user.uid });
+                            setStatusMessage('연결 성공');
+                        } else {
+                            setStatusMessage('사용자 정보를 찾을 수 없습니다.');
                         }
                         setLoading(false);
                     }, (error) => {
                         clearTimeout(timeoutId);
+                        loadingRef.current = false;
                         console.error("Auth Error:", error);
-                        // Display error in status message
-                        if (error.code === 'permission-denied') {
-                            setStatusMessage('데이터 접근 권한 오류 (Rules)');
-                            alert('⚠️ 데이터 접근 권한이 없습니다. (Firestore Security Rules)');
-                        } else {
-                            setStatusMessage('데이터 로드 오류: ' + error.message);
-                        }
+                        setStatusMessage('접근 권한 혹은 데이터 오류');
                         setLoading(false);
                     });
                 } else {
                     clearTimeout(timeoutId);
+                    loadingRef.current = false;
                     setLoading(false);
                 }
             } else {
                 clearTimeout(timeoutId);
+                loadingRef.current = false;
                 setUserData(null);
                 setLoading(false);
+                setStatusMessage('로그인 대기 중');
             }
         });
 
