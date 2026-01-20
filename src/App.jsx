@@ -89,7 +89,7 @@ const Logo = ({ size = 40, className = "" }) => (
 );
 
 const App = () => {
-  const { currentUser, userData, logout, connectWithCode, disconnectCouple, isAdmin, setUserData } = useAuth();
+  const { currentUser, userData, logout, connectWithCode, regenerateInviteCode, disconnectCouple, isAdmin, setUserData } = useAuth();
   const [adminViewTarget, setAdminViewTarget] = useState(null); // Couple ID to monitor
 
   // Settings State (Default values)
@@ -1064,10 +1064,25 @@ const App = () => {
                 {coupleUsers.length < 2 ? (
                   <>
                     {/* Show invite code only if not connected */}
+                    {/* Show invite code only if not connected */}
                     {settings.inviteCode && (
                       <div className="flex items-center justify-between mb-4 bg-white p-3 rounded-xl border border-gray-200">
                         <span className="text-secondary text-sm font-medium">내 초대 코드</span>
-                        <span className="font-black text-xl text-theme-600 tracking-widest">{settings.inviteCode}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-xl text-theme-600 tracking-widest">{settings.inviteCode}</span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (confirm('초대 코드를 새로 발급하시겠습니까?\n이전 코드는 사용할 수 없게 됩니다.')) {
+                                await regenerateInviteCode();
+                              }
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-theme-500 hover:bg-theme-50 rounded-full transition-colors"
+                            title="코드 재발급"
+                          >
+                            <Icon name="refresh-cw" size={14} />
+                          </button>
+                        </div>
                       </div>
                     )}
                     <div className="flex gap-2">

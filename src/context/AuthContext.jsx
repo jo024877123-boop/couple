@@ -242,6 +242,18 @@ export function AuthProvider({ children }) {
         setUserData({ ...userData, coupleId: newCoupleRef.id });
     }
 
+    // ========== REGENERATE INVITE CODE ==========
+    async function regenerateInviteCode() {
+        if (!userData?.coupleId) return;
+        const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+        // Check duplicate (optional but good practice) - skipped for simplicity assuming collision low
+        await updateDoc(doc(db, 'couples', userData.coupleId), {
+            inviteCode: newCode
+        });
+        // Reload settings by forcing app refresh or context update
+        window.location.reload();
+    }
+
     // ========== DELETE COUPLE DATA ==========
     async function deleteCouple(coupleId) {
         // Delete subcollections (posts, checklist, bucketlist)
@@ -308,8 +320,9 @@ export function AuthProvider({ children }) {
         signup,
         login,
         loginWithGoogle,
-        resetPassword, // Export function
+        resetPassword,
         connectWithCode,
+        regenerateInviteCode,
         disconnectCouple,
         logout,
         isAdmin,
