@@ -1065,11 +1065,28 @@ const App = () => {
               <h3 className="text-2xl font-bold text-primary">설정</h3>
               <p className="text-secondary text-sm">우리의 정보를 수정해요</p>
             </div>
+            {/* Current User Info */}
+            <div className="bg-theme-50/50 p-3 rounded-xl text-center mb-2 border border-theme-100">
+              <p className="text-xs text-start text-gray-400 mb-1 ml-1">현재 로그인 계정</p>
+              <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                <div className="w-8 h-8 rounded-full gradient-theme flex items-center justify-center text-white font-bold text-xs">
+                  {currentUser?.email?.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 text-left overflow-hidden">
+                  <p className="text-sm font-bold text-primary truncate">{currentUser?.email}</p>
+                  <p className="text-[10px] text-gray-400 truncate">Couple ID: {userData?.coupleId?.slice(0, 6)}...</p>
+                </div>
+              </div>
+            </div>
+
             <form onSubmit={(e) => { e.preventDefault(); setIsSettingsOpen(false); }} className="space-y-5">
 
               {/* Couple Connection Section */}
-              <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
-                <h4 className="font-bold text-sm text-gray-500 mb-3 flex items-center gap-2"><Icon name="link" size={14} /> 커플 연동</h4>
+              <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                <h4 className="font-bold text-sm text-gray-800 mb-4 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-theme-100 text-theme-600 flex items-center justify-center"><Icon name="link" size={12} /></span>
+                  커플 연동 상태
+                </h4>
 
                 {coupleUsers.length < 2 ? (
                   <>
@@ -1131,19 +1148,19 @@ const App = () => {
                     <button
                       type="button"
                       onClick={async () => {
-                        if (confirm('정말 연동을 해제하시겠습니까?\n공유된 데이터가 모두 삭제됩니다.')) {
+                        if (confirm('💔 정말 연동을 해제하시겠습니까?\n\n서로의 연결이 끊어지며, 나는 새로운 공간으로 이동하게 됩니다.')) {
                           try {
                             await disconnectCouple();
-                            alert('연동이 해제되었습니다.');
+                            alert('연동이 해제되었습니다. 새로운 공간이 생성되었습니다.');
                             window.location.reload();
                           } catch (e) {
                             alert('연동 해제 실패: ' + e.message);
                           }
                         }
                       }}
-                      className="w-full py-2 rounded-xl border-2 border-red-200 text-red-500 font-bold text-sm hover:bg-red-50 transition-all"
+                      className="w-full py-4 rounded-xl bg-red-50 text-red-500 font-bold text-sm hover:bg-red-100 transition-all flex items-center justify-center gap-2"
                     >
-                      연동 해제
+                      💔 상대방과 연결 끊기
                     </button>
                   </div>
                 )}
