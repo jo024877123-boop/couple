@@ -245,7 +245,6 @@ const App = () => {
   // Login Check
   if (!currentUser) return <LoginView />;
   if (!userData?.coupleId) {
-    console.log('⏳ [App] Waiting for coupleId. userData:', userData, 'currentUser:', currentUser);
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6">
         <div className="animate-spin text-4xl">⏳</div>
